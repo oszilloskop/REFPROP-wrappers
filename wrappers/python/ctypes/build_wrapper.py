@@ -37,6 +37,27 @@ import ctypes as ct
 import sys, os, glob
 from collections import namedtuple
 import functools
+import array
+
+# In Python 2.x, the array.array function cannot accept the bytearray(x) as an argument, and 
+# therefore, we just pass a copy, which is slower in python 2.7, but seems like the best that
+# can be done
+if sys.version_info > (2,0) and sys.version_info < (3,0):
+    f_bytearray = lambda x: x
+else:
+    f_bytearray = bytearray
+
+def to_double_array(l):
+    """
+    Convert an object with a buffer interface containing doubles to an array.array of double type
+    """
+    return array.array('d',f_bytearray(l))
+
+def to_int_array(l):
+    """
+    Convert an object with a buffer interface containing integers to an array.array of int type
+    """
+    return array.array('i',f_bytearray(l))
 
 def trim(s):
     return s.replace(b'\\x00',b'').strip().decode('utf-8')
@@ -389,8 +410,10 @@ def gen_ctypes_wrappers(fcninfo, ofname):
                 arg_names.append('"' + arg + '"')
                 if dim == 0 and typ in ['int','double']:
                     arg_strings.append('{arg:s}.value'.format(arg=arg))
-                elif dim > 0 and typ in ['int','double']:
-                    arg_strings.append('list({arg:s})'.format(arg=arg))
+                elif dim > 0 and typ == 'int':
+                    arg_strings.append('to_int_array({arg:s})'.format(arg=arg))
+                elif dim > 0 and typ == 'double':
+                    arg_strings.append('to_double_array({arg:s})'.format(arg=arg))
                 elif typ == 'char':
                     arg_strings.append('trim({arg:s}.raw)'.format(arg=arg))
                 else:

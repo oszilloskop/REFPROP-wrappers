@@ -22,7 +22,17 @@ In your MATLAB shell, you can inquire about what Python version MATLAB intends t
 ```
 Good.  It found Python, and has not loaded it yet.  You are ready!
 
-If you have multiple copies of Python on your computer already, then you can tell MATLAB which one you want it to use by passing the absolute path to the python executable to ``pyversion``.  For instance:
+If you obtained Python from an Anaconda installation then you can open an Anaconda prompt (In Start Menu->Anaconda Prompt (64-bit) or somewhere similar depending on your sytem) and query the path of your Python installation with a command like:
+```
+(base) C:\Users\ihb>where python
+C:\Users\ihb\Miniconda3\python.exe
+```
+and then set the path to your Python in MATLAB:
+```
+>> pyversion C:\Users\ihb\Miniconda3\python.exe
+```
+
+If you have multiple copies of Python on your computer already (in conda environments, for instance), then you can tell MATLAB which one you want it to use by passing the absolute path to the python executable to ``pyversion``.  For instance:
 
 ```
 
@@ -35,20 +45,24 @@ If you have multiple copies of Python on your computer already, then you can tel
           home: 'd:\Anaconda\envs\py36'
       isloaded: 0
 ```
+
+## Install ctREFPROP
+
 Finally, you need to install the ctREFPROP package (a ``ctypes``-based interface to REFPROP) into your given copy of python.  This one-liner calls the ``pip`` program of Python to install the ctREFPROP package from the PYPI package index.  Watch out for the spaces in the arguments, they are important!:
 ``` MATLAB
-[v,e] = pyversion; system([e,' -m',' pip',' install',' --user',' -U',' ctREFPROP'])
+[v,e] = pyversion; system([e,' -m pip install --user -U ctREFPROP'])
+```
+
+If your python installation does not have ``pip`` installed (it is usually installed by default), you can install it with
+``` MATLAB
+[v,e] = pyversion; system([e,' -m easy_install pip'])
 ```
 
 ## Use
 
-At the beginning of your code you should add the import statement (similar to what you would do in Python):
+To initialize REFPROP, you tell it what the root path of your REFPROP installation is:
 ```
-import py.ctREFPROP.ctREFPROP.REFPROPFunctionLibrary
-```
-then to initialize REFPROP, you tell it what the root path of your REFPROP installation is:
-```
-RP = REFPROPFunctionLibrary('C:\Program Files (x86)\REFPROP')
+RP = py.ctREFPROP.ctREFPROP.REFPROPFunctionLibrary('C:\Program Files (x86)\REFPROP')
 ```
 and to confirm that everything is working correctly, let's print out the version of REFPROP that you have loaded:
 ```
@@ -60,7 +74,7 @@ ans =
 
     10.0
 ```
-As the first practical example of the use of the MATLAB interface, let's calculate the normal boiling point temperature of water at one atmosphere (1 bar = 101.325 kPa). We will revisit the other arguments soon
+As the first practical example of the use of the MATLAB interface, let's calculate the normal boiling point temperature of water at one atmosphere (1 bar = 101.325 kPa). 
 
 ```
 >> r = RP.REFPROPdll('Water','PQ','T',int8(0),int8(0),int8(0),101.325,0.0,{1.0})
@@ -80,17 +94,21 @@ ans =
     y
     z
 ```
-Multiple outputs are returned in a data structure ([see the documentation for the REFPROPdll function](http://refprop-docs.readthedocs.io/en/latest/DLL/high_level.html#f/_/REFPROPdll)), and you can obtain the first output by indexing the ``Output`` list.  This interface calls directly into the DLL (via Python), so the documentation is exactly what you need to know for MATLAB too.
+Multiple outputs are returned in a data structure ([see the documentation for the REFPROPdll function](http://refprop-docs.readthedocs.io/en/latest/DLL/high_level.html#f/_/REFPROPdll)).  Then you can obtain the first output by indexing the ``Output`` list.  This interface calls directly into the DLL (via Python), so the documentation is exactly what you need to know for MATLAB too.
 
-The normal boiling point temperature is then obtained from the Output:
+As of ctREFPROP 0.7, the return type is an [array.array](https://docs.python.org/3/library/array.html) in Python in order to make the Python interface more computationally efficient (and thus the MATLAB one too).  In order to make use of this output in MATLAB, you can either 
+
+A) Convert the array.array to a list with ``py.list(r.Output)`` (less efficient option)
+B) Convert the array.array to a MATLAB array with ``double(r.Output)`` (more efficient option) [MATLAB docs](https://www.mathworks.com/help/matlab/matlab_external/handling-data-returned-from-python.html)
+
+The normal boiling point temperature is then obtained from the Output array:
 ```
->> r.Output(1)
+>> o = double(r.Output);
+>> o(1)
 
-ans = 
+ans =
 
-  Python list with no properties.
-
-    [373.1242958476959]
+  373.1243
 ```
 
 Success!
